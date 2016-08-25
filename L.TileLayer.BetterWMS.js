@@ -16,12 +16,20 @@ L.TileLayer.BetterWMS = L.TileLayer.WMS.extend({
   
   getFeatureInfo: function (evt) {
     // Make an AJAX request to the server and hope for the best
-    var url = this.getFeatureInfoUrl(evt.latlng),
-        showResults = L.Util.bind(this.showGetFeatureInfo, this);
+    var url = this.getFeatureInfoUrl(evt.latlng);
+    var showResults = L.Util.bind(this.showGetFeatureInfo, this);
     $.ajax({
       url: url,
       success: function (data, status, xhr) {
-        var err = typeof data === 'string' ? null : data;
+        //var err = typeof data === 'string' ? null : data;
+        var err = null;
+        if(data) {
+          if(typeof data !== 'string' || data.match(/ServiceException/) != null) {
+            err = data;
+          }
+        } else {
+          err = "no data";
+        }
         showResults(err, evt.latlng, data);
       },
       error: function (xhr, status, error) {
@@ -32,18 +40,34 @@ L.TileLayer.BetterWMS = L.TileLayer.WMS.extend({
   
   getFeatureInfoUrl: function (latlng) {
     // Construct a GetFeatureInfo request URL given a point
-    var point = this._map.latLngToContainerPoint(latlng, this._map.getZoom()),
-        size = this._map.getSize(),
+    var point = this._map.latLngToContainerPoint(latlng, this._map.getZoom());
+    var size = this._map.getSize();
+    //var srs = 'EPSG:4326';
+    var srs = 'EPSG:3857';
+    var bounds = this._map.getBounds();
+    if(srs != 'EPSG:4326') {
+      var src_srs = new proj4.Proj('EPSG:4326');
+      var dest_srs = new proj4.Proj(srs);
+
+      var ne_p = new proj4.toPoint([bounds._northEast.lng, bounds._northEast.lat]);
+      proj4.transform(src_srs, dest_srs, ne_p);
+      bounds._northEast.lng = ne_p.x;
+      bounds._northEast.lat = ne_p.y;
+      var sw_p = new proj4.toPoint([bounds._southWest.lng, bounds._southWest.lat]);
+      proj4.transform(src_srs, dest_srs, sw_p);
+      bounds._southWest.lng = sw_p.x;
+      bounds._southWest.lat = sw_p.y;
+    }
         
-        params = {
+    var params = {
           request: 'GetFeatureInfo',
           service: 'WMS',
-          srs: 'EPSG:4326',
+          srs: srs,
           styles: this.wmsParams.styles,
           transparent: this.wmsParams.transparent,
           version: this.wmsParams.version,      
           format: this.wmsParams.format,
-          bbox: this._map.getBounds().toBBoxString(),
+          bbox: bounds.toBBoxString(),
           height: size.y,
           width: size.x,
           layers: this.wmsParams.layers,

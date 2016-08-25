@@ -9,7 +9,7 @@ L.TileLayer.BetterWMS.js：
 本スクリプトは以下の既存スクリプトの改良版です。  
 https://gist.github.com/rclark/6908938
 
-Javascriptのみを改変しています。
+Javascriptを改変しています。本スクリプトの動作の確認にはindex_new.htmlをお使いください。
 
 別途、外部ライブラリのproj4が必要になります。
 
